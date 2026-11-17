@@ -572,30 +572,85 @@ function makeBrd(Tbl, flag) {
   }
 }
 
-window.modTable = function(elm, flag) {
-  closeDlg(elm);
-  const T = tableElement.closest('table'), par = tableElement.parentNode;
-console.log(T.tagName, '>>>', tableElement.tagName);
-  const clone = tableElement.cloneNode(true);
-  switch(flag) {
-    case 0: tableElement.before(clone); reNum(T); return;
-    case 1: tableElement.after(clone); reNum(T); return;
-    case 2: if(T.rows.length < 2) T.remove(); else { tableElement.remove(); reNum(T); } return;
-    case 3: T.remove(); return;
-    case 4: makeBrd(T, true); return;
-    case 5: makeBrd(T, false); return;
-    case 6: const prevRow = tableElement.previousElementSibling;
-            if(prevRow) { par.insertBefore(tableElement, prevRow); reNum(T); } return;
-    case 7: const nextRow = tableElement.nextElementSibling;
-    if(nextRow) { par.insertBefore(tableElement, nextRow.nextElementSibling); reNum(T); } return;
+
+function getTableIndexes() {
+  const { $from } = editor.state.selection;
+  for (let d = $from.depth; d > 0; d--) {
+    if ($from.node(d).type.name === 'tableRow') {
+      const tableDepth = d - 1,
+        tbl = $from.node(tableDepth),
+        from = $from.before(tableDepth),
+        to = from + tbl.nodeSize;
+      return {
+        tbl,
+        row: $from.index(tableDepth),
+        col: $from.index(d),
+        from,
+        to
+      }
+    }
   }
+  return null;
 }
 
-/*function closeDlg(el) {
-  el.closest('dialog').close();
-  restoreSelection();
-  editorElement.focus();
-}*/
+window.modTable = function(elm, flag) {
+  const loc = getTableIndexes(); if(!loc) return;
+  const T = loc.tbl.toJSON(), R = T.content[ loc.row ];
+  const EL = R.content[0].content[0].content[0];
+  const { from, to } = loc;
+
+  function reNumer() {
+    if(!EL.marks || EL.marks[0].type != 'customSpan') return;
+    let tip = EL.text.charCodeAt(0);
+    if(tip >= 48 && tip <= 57) tip = 0;
+    else if(tip >= 65 && tip <= 90) tip = 1;
+    else if(tip >= 97 && tip <= 122) tip = 2;
+    let iCnt = 1;
+    for(let r of T.content) {
+      r.content[0].content[0].content[0].text = ((tip == 0) ?
+        iCnt.toString() :
+        String.fromCharCode(iCnt + ((tip == 1) ? 64 : 96)));
+      iCnt++;
+    }
+  }
+
+  closeDlg(elm);
+
+  if(flag < 2) {                    //---- insert before and after
+    const newRow = structuredClone(R);
+    T.content.splice(loc.row + flag, 0, newRow);
+    reNumer();
+    editor.chain().focus().insertContentAt({ from, to }, T).run();
+    return;  
+  }
+
+  if(flag == 6 || flag == 7) {       //---- move up and down
+    if(flag == 6) {
+      if(loc.row == 0) return;
+      [T.content[loc.row], T.content[loc.row-1]] = [T.content[loc.row-1], T.content[loc.row]];
+    }
+    else {
+      if(loc.row == T.content.length - 1) return;
+      [T.content[loc.row], T.content[loc.row+1]] = [T.content[loc.row+1], T.content[loc.row]];
+    }
+    reNumer();
+    editor.chain().focus().insertContentAt({ from, to }, T).run();
+    return;
+  }
+  if(flag == 2) {
+    if(T.content.length == 1) { editor.chain().focus().deleteTable().run(); return; }
+    T.content.splice(loc.row, 1);
+    reNumer();
+    editor.chain().focus().insertContentAt({ from, to }, T).run();
+    return;
+  }
+  if(flag == 3) editor.chain().focus().deleteTable().run();
+
+    /*switch(flag) {
+      case 4: makeBrd(T, true); return;
+      case 5: makeBrd(T, false); return;
+    }*/
+}
 
 window.closeDlg = function(el) {
   el.closest('dialog').close();
