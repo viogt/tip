@@ -2344,7 +2344,7 @@ selectors.forEach(selector => {
     const rect = el.getBoundingClientRect();
     const css = getComputedStyle(el);
 
-    console.log(selector, {
+    /*console.log(selector, {
         width: rect.width,
         height: rect.height,
         display: css.display,
@@ -2352,7 +2352,7 @@ selectors.forEach(selector => {
         visibility: css.visibility,
         offsetParent: el.offsetParent,
         parentWidth: el.parentElement?.getBoundingClientRect().width
-    });
+    });*/
 });
 /* ===================================================== */
 

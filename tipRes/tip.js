@@ -204,7 +204,7 @@ const editor = new Editor({
         TextAlign.configure({
             types: ['heading', 'paragraph', 'blockquote'],
             alignments: ['left', 'center', 'right', 'justify'],
-            defaultAlignment: 'left'
+            defaultAlignment: 'justify'
         }),
         CustomSpan,
         CustomTableCell,
@@ -434,12 +434,12 @@ function getAddress(flag) {
 }
 
 document.getElementById('titlu').addEventListener('click', () => {
-    const tbl = `<table><tbody>
+    const tbl = `<table>
     <tr><td style="width:100%;padding:0 .6em .6em 0;border-right:1px solid #000;vertical-align:bottom;"><h1>REQUEST</h1></td>
         <td style="width: 1%; white-space: nowrap;padding:0 0 .6em 1em;">${getAddress('to')}</td>
     </tr>
     <tr><td colspan="2" style="border:1px solid #000;padding:.6em 0;"><p style="text-align: center">The description of the subject-matter<br>to be brought to the attention.</p></td></tr>
-    </tbody></table>`;
+    </table><p></p>`;
     editor.chain().focus().insertContent(tbl, {
         parseOptions: { preserveWhitespace: false },
     }).run();      
@@ -536,26 +536,6 @@ document.getElementById('insertTable') .addEventListener('click', () => {
   else document.getElementById('insertTableDlg').showModal();
 });
 
-function reNum(tbl) {
-  if(!tbl.hasAttribute('renewable')) return;
-  const rgx = />(.)<\/div>/;
-  const lttr = tbl.rows[0].cells[0].innerHTML.match(rgx);
-  let tip = -1;
-  if(lttr) tip = lttr[0].charCodeAt(1); else { console.log('Letter ERROR'); return; }
-  if(tip >= 48 && tip <= 57) tip = 0;
-  else if(tip >= 65 && tip <= 90) tip = 1;
-  else if(tip >= 97 && tip <= 122) tip = 2;
-  if(tip == -1) { console.log('LETTER ERROR'); return; }
-  let iCnt = 0;
-  for (const r of tbl.rows) {
-    let clc = (tip == 0) ? (iCnt+1) : String.fromCharCode(iCnt + ((tip == 1) ? 65 : 97));
-    r.cells[0].innerHTML = r.cells[0].innerHTML.replace(rgx, (match, cnt) => {
-      return `>${clc}</span>`;
-    });
-    iCnt++;
-  }
-}
-
 function makeBrd(Tbl, flag) {
   const rs = Tbl.rows.length, cs = Tbl.rows[0].cells.length;
   let st, ln = flag ? 'border-top: .8px solid #000;' : '';
@@ -572,30 +552,84 @@ function makeBrd(Tbl, flag) {
   }
 }
 
-window.modTable = function(elm, flag) {
-  closeDlg(elm);
-  const T = tableElement.closest('table'), par = tableElement.parentNode;
-console.log(T.tagName, '>>>', tableElement.tagName);
-  const clone = tableElement.cloneNode(true);
-  switch(flag) {
-    case 0: tableElement.before(clone); reNum(T); return;
-    case 1: tableElement.after(clone); reNum(T); return;
-    case 2: if(T.rows.length < 2) T.remove(); else { tableElement.remove(); reNum(T); } return;
-    case 3: T.remove(); return;
-    case 4: makeBrd(T, true); return;
-    case 5: makeBrd(T, false); return;
-    case 6: const prevRow = tableElement.previousElementSibling;
-            if(prevRow) { par.insertBefore(tableElement, prevRow); reNum(T); } return;
-    case 7: const nextRow = tableElement.nextElementSibling;
-    if(nextRow) { par.insertBefore(tableElement, nextRow.nextElementSibling); reNum(T); } return;
+function getTableIndexes() {
+  const { $from } = editor.state.selection;
+  for (let d = $from.depth; d > 0; d--) {
+    if ($from.node(d).type.name === 'tableRow') {
+      const tableDepth = d - 1,
+        tbl = $from.node(tableDepth),
+        from = $from.before(tableDepth),
+        to = from + tbl.nodeSize;
+      return {
+        tbl,
+        row: $from.index(tableDepth),
+        col: $from.index(d),
+        from,
+        to
+      }
+    }
   }
+  return null;
 }
 
-/*function closeDlg(el) {
-  el.closest('dialog').close();
-  restoreSelection();
-  editorElement.focus();
-}*/
+window.modTable = function(elm, flag) {
+  const loc = getTableIndexes(); if(!loc) return;
+  const T = loc.tbl.toJSON(), R = T.content[ loc.row ];
+  const EL = R.content[0].content[0].content[0];
+  const { from, to } = loc;
+
+  function reNumer() {
+    if(!EL.marks || EL.marks[0].type != 'customSpan') return;
+    let tip = EL.text.charCodeAt(0);
+    if(tip >= 48 && tip <= 57) tip = 0;
+    else if(tip >= 65 && tip <= 90) tip = 1;
+    else if(tip >= 97 && tip <= 122) tip = 2;
+    let iCnt = 1;
+    for(let r of T.content) {
+      r.content[0].content[0].content[0].text = ((tip == 0) ?
+        iCnt.toString() :
+        String.fromCharCode(iCnt + ((tip == 1) ? 64 : 96)));
+      iCnt++;
+    }
+  }
+
+  closeDlg(elm);
+
+  if(flag < 2) {                    //---- insert before and after
+    const newRow = structuredClone(R);
+    T.content.splice(loc.row + flag, 0, newRow);
+    reNumer();
+    editor.chain().focus().insertContentAt({ from, to }, T).run();
+    return;  
+  }
+
+  if(flag == 6 || flag == 7) {       //---- move up and down
+    if(flag == 6) {
+      if(loc.row == 0) return;
+      [T.content[loc.row], T.content[loc.row-1]] = [T.content[loc.row-1], T.content[loc.row]];
+    }
+    else {
+      if(loc.row == T.content.length - 1) return;
+      [T.content[loc.row], T.content[loc.row+1]] = [T.content[loc.row+1], T.content[loc.row]];
+    }
+    reNumer();
+    editor.chain().focus().insertContentAt({ from, to }, T).run();
+    return;
+  }
+  if(flag == 2) {
+    if(T.content.length == 1) { editor.chain().focus().deleteTable().run(); return; }
+    T.content.splice(loc.row, 1);
+    reNumer();
+    editor.chain().focus().insertContentAt({ from, to }, T).run();
+    return;
+  }
+  if(flag == 3) editor.chain().focus().deleteTable().run();
+
+    /*switch(flag) {
+      case 4: makeBrd(T, true); return;
+      case 5: makeBrd(T, false); return;
+    }*/
+}
 
 window.closeDlg = function(el) {
   el.closest('dialog').close();
@@ -703,10 +737,10 @@ document.getElementById('tableModalInsert').addEventListener('click', (e) => {
         <span style="display:inline-block; height:2em; width:2em; line-height:2em; padding-left:.5em; border: .8px solid #000; border-top-right-radius: 50%; border-bottom-right-radius: 50%;">${lt}</span>
         </td><td${btm}>${cnt}</td></tr>`;
       else if(val == 'list_s') t += `<tr><td style="width: 40px;">
-        <span style="display:inline-block;height:30px;aspect-ratio:1;padding:4px 8px;border-top:.8px solid #000;border-left:.8px solid #000;border-top-left-radius: 8px;">${lt}</span>
+        <span style="display:inline-block;height:30px;aspect-ratio:1;padding:4px 8px;border-top:.8px solid #000;border-left:.8px solid #000;border-top-left-radius: 6px;">${lt}</span>
         </td><td${btm}>${cnt}</td></tr>`;
       else t += `<tr><td style="width: 40px;">
-        <span style="display:inline-block;width:1.4em;aspect-ratio:1;padding: 0 6px 6px 0;border-right: .8px solid #000;border-bottom: .8px solid #000;border-bottom-right-radius: 60%;">${lt}</span>
+        <span style="display:inline-block;width:1.4em;aspect-ratio:1;width:1.6em;border-right: .8px solid #000;border-bottom: .8px solid #000;border-bottom-right-radius: 60%;">${lt}</span>
         </td><td${btm}>${cnt}</td></tr>`;
     }
     t += '</table>';
@@ -803,4 +837,97 @@ document.querySelector('#clearAll').addEventListener('click', async() => {
   }
 });
 
+document.querySelector('#inlineIcon').addEventListener('click', async () => {
+  const inp = await showPrompt('ink_pen, info, check_circle, search, help...<br>or ex: ink_pen 3 (lines height)<br>or SVG or HTML/span code:', 'info');
+  if(!inp || inp.trim() == '') return;
+console.log('INPUT', inp);
+  if(inp.charAt(0) == '<') {
+    editor.chain().focus().insertContent(inp,
+        { parseOptions: { preserveWhitespace: false },
+    }).run();
+    return;
+  }
+  const parts = inp.split(' ');
+  if(parts.length < 2) {
+    editor.chain().focus().insertContent(`<span class="material-symbols-outlined" style="font-size: 1em;">${inp}</span> `,
+        { parseOptions: { preserveWhitespace: false },
+    }).run();
+    return;
+  }
+  let x = parseInt(parts[1], 10); if(isNaN(x)) return;
+  editor.chain().focus().insertContent(`<span class="material-symbols-outlined" style="font-size: ${x}lh; line-height:1; float: left; margin-right: 10px;">${parts[0]}</span>`,
+    { parseOptions: { preserveWhitespace: false },
+  }).run();
+});
+
+document.querySelector('#docNameInput').addEventListener('change', (event) => {
+  const newName = event.target.value.trim();
+  document.documentElement.style.setProperty('--doc-name', `"${newName}"`);
+});
+
+document.querySelector('#footerLang').addEventListener('click', (event) => {
+  const el = event.target;
+  if (el.textContent === 'RO') {
+    document.documentElement.style.setProperty('--page-text', '"Page"');
+    document.documentElement.style.setProperty('--of-text', '"of"');
+    el.textContent = 'EN';
+  } else {
+    document.documentElement.style.setProperty('--page-text', '"Pag."');
+    document.documentElement.style.setProperty('--of-text', '"din"');
+    el.textContent = 'RO';
+  }
+});
+
+document.querySelector('#fileInput').addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    base64File = e.target.result;
+    document.getElementById('placeHolder').style.display = "none";
+    document.getElementById('previewImage').src = base64File;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.querySelector('#changeFont').addEventListener('click', () => {
+  document.getElementById('selectFontsDlg').showModal();
+});
+
+window.selectFont = function(btn) {
+  let base = document.querySelector('dialog input[name="font_select"]:checked').value,
+      head = document.querySelector('dialog input[name="Hfont_select"]:checked').value,
+      size = document.getElementById('fSize').value + 'px',
+      href = '', font = null, Hfont = null;
+  if(base != 'Default') font = base.split(':')[0].replace(/\+/g, ' ');
+  if(head != 'Default') Hfont = head.split(':')[0].replace(/\+/g, ' ');
+  if(font || Hfont)
+      href = `https://fonts.googleapis.com/css2?${font?('family='+base):''}${font && Hfont?'&':''}${Hfont?('family='+head):''}&display=swap`;
+  if(!font) font = 'Roboto, Arial, sans-serif';
+  if(!Hfont) Hfont = 'Roboto, Arial, sans-serif';
+
+  document.getElementById('curFonts').href = href;
+  document.documentElement.style.setProperty('--font-fam', font);
+  document.documentElement.style.setProperty('--font-famH', Hfont);
+  document.documentElement.style.setProperty('--font-size', size);
+  closeDlg(btn);
+  return;
+}
+
+document.getElementById('printPdf').addEventListener('click', async () => {
+  const editorElement = document.getElementById('editor');
+
+  const html = editorElement.innerHTML;
+  let output = document.getElementById('paged-output-container');
+  output.innerHTML = '';
+
+  try {
+    const paged = new window.Paged.Previewer();
+    const flow = await paged.preview(html,['tipRes/print.css'],output);
+    //console.log('Pages generated:', flow.total);
+    window.print();
+  } catch (error) {
+    console.error('Printing failed:', error);
+  }
+});
 editor.commands.focus('start');

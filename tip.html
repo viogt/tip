@@ -253,27 +253,9 @@
   window.PagedConfig = {
     auto: false
   };
-
-async function printDocument() {
-  const editorElement = document.getElementById('editor');
-
-  const html = editorElement.innerHTML;
-  let output = document.getElementById('paged-output-container');
-  output.innerHTML = '';
-
-  try {
-    const paged = new window.Paged.Previewer();
-    const flow = await paged.preview(html,['exp/print.css'],output);
-
-    console.log('Pages generated:', flow.total);
-
-    window.print();
-  } catch (error) {
-    console.error('Printing failed:', error);
-  }
-}
 </script>
 <script type="module" src="tipRes/tip.js"></script>
 <script src="tipRes/paged.polyfill.js"></script>
+<!--<script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>-->
 </body>
 </html>
