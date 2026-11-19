@@ -96,8 +96,8 @@ button .material-symbols-outlined {
 }
 
 #docNameInput {
-    grid-column: span 3;
-  width: 147px;
+  grid-column: span 5;
+  width: 166px;
   vertical-align: middle;
   padding: 2px 6px;
   border: 0.5px solid #bbb;
@@ -299,4 +299,13 @@ input { accent-color: #080; }
     left: auto !important;
     width: auto !important;
   }
+}
+
+#loadFromFile td {
+  border-bottom: 1px solid #ccc;
+  padding: 4px;
+}
+#loadFromFile td:first-child {
+  text-align: left;
+  border-right: 1px dotted #888;
 }

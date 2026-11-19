@@ -15,13 +15,14 @@
 <div class="wrapper">
   <div class="toolbar">
 
-    <button id="printPdf" title="Download the document as PDF">PDF &#9662;</button>
-    <input type="text" id="docNameInput" placeholder="Doc Name for Footer" title="Set Document Name for Footer">
-    <span>
-    <button data-command="undo" title="Undo (Ctrl+Z)"><span class="material-symbols-outlined">undo</span></button>
-    <button data-command="redo" title="Redo (Ctrl+Y)"><span class="material-symbols-outlined">redo</span></button>
-    <button id="clearAll" title="Remove all formatting from the document"><span class="material-symbols-outlined">mop</span></button>
-    </span>
+  <button id="printPdf" title="Download the document as PDF">PDF &#9662;</button>
+  <input type="text" id="docNameInput" maxlength="60" placeholder="Doc name here..." title="Set Document Name for Footer">
+    
+  <button id="saveDoc" title="Save document"><span class="material-symbols-outlined">save</span></button>
+  <button id="openDoc" title="Open document"><span class="material-symbols-outlined">folder_open</span></button>
+
+  <button data-command="undo" title="Undo (Ctrl+Z)"><span class="material-symbols-outlined">undo</span></button>
+  <button data-command="redo" title="Redo (Ctrl+Y)"><span class="material-symbols-outlined">redo</span></button>
 
 <div class="divider"></div>
 
@@ -38,15 +39,15 @@
 
 <div class="divider"></div>
 
-<button data-sel="p" title="Body text paragraph"><span class="material-symbols-outlined">format_paragraph</span></button>
-    <button data-command="outdent" title="Decrease indent"><span class="material-symbols-outlined">format_indent_decrease</span></button>
 <button data-command="h1" title="Title, Heading H1"><span class="material-symbols-outlined">format_h1</span></button>
-    <button data-command="indent" title="Increase indent"><span class="material-symbols-outlined">format_indent_increase</span></button>
+    <button data-command="outdent" title="Decrease indent"><span class="material-symbols-outlined">format_indent_decrease</span></button>
 <button data-command="h2" title="Subtitle, Heading H2"><span class="material-symbols-outlined">format_h2</span></button>
-    <button data-command="bulletList" title="Bulleted list"><span class="material-symbols-outlined">format_list_bulleted</span></button>
+    <button data-command="indent" title="Increase indent"><span class="material-symbols-outlined">format_indent_increase</span></button>
 <button data-command="UpperCase" title="Body text paragraph"><span class="material-symbols-outlined">uppercase</span></button>
-    <button data-command="orderedList" title="Numbered list"><span class="material-symbols-outlined">format_list_numbered</span></button>
+    <button data-command="bulletList" title="Bulleted list"><span class="material-symbols-outlined">format_list_bulleted</span></button>
 <button data-command="LowerCase" title="Body text paragraph"><span class="material-symbols-outlined">lowercase</span></button>
+    <button data-command="orderedList" title="Numbered list"><span class="material-symbols-outlined">format_list_numbered</span></button>
+<button data-command="nbsp" title="Insert non-breaking space"><span class="material-symbols-outlined">space_bar</span></button>
     <button data-command="horizontalRule" title="Insert a Horizontal line"><span class="material-symbols-outlined">horizontal_rule</span></button>
 
 <div class="divider"></div>
@@ -55,10 +56,10 @@
     <button id="insertTable" title="Insert Table"><span class="material-symbols-outlined">table</span></button>
 <button data-command="sub" title="Subscript"><span class="material-symbols-outlined">subscript</span></button>
     <button id="uploadFile" title="Insert an Image"><span class="material-symbols-outlined">add_photo_alternate</span></button>
-<button data-command="nbsp" title="Insert non-breaking space"><span class="material-symbols-outlined">space_bar</span></button>
-    <button id="fineprint" title="Insert Fine Print"><span class="material-symbols-outlined">manage_search</span></button>
 <button data-command="sect" title="Insert paragrpagh">&sect;</button>    
-    <button id="endash" title="Turn '--' into '—'"><span class="material-symbols-outlined">unknown_med</span></button>
+    <button id="fineprint" title="Insert Fine Print"><span class="material-symbols-outlined">manage_search</span></button>
+<button id="inlineIcon" title="Insert an Inline Icon"><span class="material-symbols-outlined">design_services</span></button>
+    <button id="changeFont" title="Select fonts"><span class="material-symbols-outlined">brand_family</span></button>
 
 <div class="divider"></div>
 
@@ -75,12 +76,9 @@
 
 <div class="divider"></div>
 
-<button id="inlineIcon" title="Insert an Inline Icon"><span class="material-symbols-outlined">design_services</span></button>
-    <button id="changeFont" title="Select fonts"><span class="material-symbols-outlined">brand_family</span></button>
-<button id="ribbon" type="ribbon" title="Insert a Ribbon title"><span class="material-symbols-outlined">workspace_premium</span></button>
-    <button id="takeClipboard" title="Content into the Clipboard"><span class="material-symbols-outlined">inventory</span></button>
 <button id="footerLang" title="Toggle footer language">RO</button>
-    <button  id="pushClipboard" title="From Clipboard into Document"><span class="material-symbols-outlined">article_shortcut</span></button>
+    <button id="clearAll" title="Remove all formatting from the document"><span class="material-symbols-outlined">mop</span></button>
+
 </div>
 </div>
 
@@ -247,6 +245,13 @@
     <button onclick="closeDlg(this)">&#x2718; CANCEL</button>
     <button onclick="selectFont(this)" style="background-color: #bfb;">&#x2714; CHANGE</button>
 </div>
+</dialog>
+
+<dialog id="loadFromFile">
+  <div style="width:100%; height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 6px;font-size:13px;">
+    <table id="locStorage"></table>
+  </div>
+  <button onclick="this.closest('dialog').close()">Close</button>
 </dialog>
 
 <script>
