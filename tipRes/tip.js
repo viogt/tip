@@ -869,16 +869,17 @@ document.querySelector('#docNameInput').addEventListener('change', (event) => {
 });
 
 document.querySelector('#footerLang').addEventListener('click', (event) => {
+  const lng = [
+    ['RO', '"Pag."', '"din"'],
+    ['EN', '"Page"', '"of"'],
+    ['RU', '"Стр."', '"из"']
+  ];
   const el = event.target;
-  if (el.textContent === 'RO') {
-    document.documentElement.style.setProperty('--page-text', '"Page"');
-    document.documentElement.style.setProperty('--of-text', '"of"');
-    el.textContent = 'EN';
-  } else {
-    document.documentElement.style.setProperty('--page-text', '"Pag."');
-    document.documentElement.style.setProperty('--of-text', '"din"');
-    el.textContent = 'RO';
-  }
+  let ix = lng.findIndex(b => b[0] == el.textContent);
+  ix = (ix < lng.length - 1) ? ix+1 : 0;
+  el.textContent = lng[ix][0];
+  document.documentElement.style.setProperty('--page-text', lng[ix][1]);
+  document.documentElement.style.setProperty('--of-text', lng[ix][2]);
 });
 
 document.querySelector('#fileInput').addEventListener('change', (event) => {
@@ -955,14 +956,16 @@ document.getElementById('saveDoc').addEventListener('click',  async () => {
     try {
       localStorage.setItem(k, JSON.stringify(val));
       document.getElementById('saveDoc').style.color = '#080';
-      setTimeout((e)=>{ document.getElementById('saveDoc').style.color = ''; }, 500);
       isDirty = false;
-      return true;
-    } catch(err) { return false; }
+    } catch(err) {
+      document.getElementById('saveDoc').style.color = '#c00';
+    }
+    setTimeout((e)=>{ document.getElementById('saveDoc').style.color = ''; }, 500);
   }
 });
 
 document.getElementById('openDoc').addEventListener('click',  async () => {
+  if(isDirty) if(! await showPrompt("You are about to loose changes. Proceed?",'','ask')) return;
   document.getElementById('loadFromFile').showModal();
 	const t = document.getElementById('locStorage'),
 		locLen = localStorage.length,

@@ -303,9 +303,6 @@ input { accent-color: #080; }
 
 #loadFromFile td {
   border-bottom: 1px solid #ccc;
-  padding: 4px;
-}
-#loadFromFile td:first-child {
   text-align: left;
-  border-right: 1px dotted #888;
+  padding: 4px;
 }
