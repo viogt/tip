@@ -190,14 +190,70 @@ const CustomImage = Image.extend({
   },
 });
 
+const CustomTable = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        parseHTML: el => el.style.width || null,
+        renderHTML: () => ({}), // rendered below
+      },
+      float: {
+        default: null, // 'left' | 'right' | null
+        parseHTML: el => el.style.float || null,
+        renderHTML: () => ({}), // rendered below
+      },
+      border: {
+        default: null,
+        parseHTML: el => el.style.border || null,
+        renderHTML: attrs =>
+          attrs.border ? { style: `border: ${attrs.border}` } : {},
+      }
+    };
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    const { width, float } = node.attrs;
+
+    const style = [
+      width ? `width: ${width}` : null,
+      float ? `float: ${float}` : null,
+      float === 'left' ? 'margin-right: .8em' : null,
+      float === 'right' ? 'margin-left: .8em' : null,
+    ]
+      .filter(Boolean)
+      .join('; ');
+
+    return [
+      'table',
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { style }),
+      ['tbody', 0],
+    ];
+  },
+});
+
+import Paragraph from 'https://esm.sh/@tiptap/extension-paragraph';
+const CustomParagraph = Paragraph.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      style: {
+        default: null,
+        parseHTML: el => el.getAttribute('style'),
+        renderHTML: attrs => (attrs.style ? { style: attrs.style } : {}),
+      },
+    };
+  },
+});
+
 const editor = new Editor({
     element: editorElement,
     editable: true,
     extensions: [
-        StarterKit.configure({ heading: { levels: [1, 2] } }),
+        StarterKit.configure({ paragraph: false, heading: { levels: [1, 2] } }),
         Underline,
         Link.configure({ openOnClick: false, HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
-        Table.configure({ resizable: true }),
+        //Table.configure({ resizable: true }),
         TableRow,
         TableHeader,
         IndentExtension,
@@ -208,9 +264,11 @@ const editor = new Editor({
         }),
         CustomSpan,
         CustomTableCell,
-        CustomImage.configure({ inline: true, allowBase64: true }),
+        CustomImage.configure({ inline: false, allowBase64: true }),
         InlineSvg,
-        Superscript, Subscript
+        Superscript, Subscript,
+        CustomTable,
+        CustomParagraph
     ],
     content: `
 <h1>Document title</h1>
@@ -786,41 +844,106 @@ document.querySelector('#uploadFile').addEventListener('click', () => {
 });
 
 document.getElementById('imageModalInsert').addEventListener('click', (e) => {
-    const elm = getCurrentElement();
-    const srcImg = document.querySelector('#previewImage');
-    if(srcImg.src == '') return;
+  const elm = getCurrentElement();
+  const srcImg = document.querySelector('#previewImage');
+  if(srcImg.src == '') {
+    const btn = e.target, btnCnt = btn.textContent, btnBkgr = btn.style.backgroundColor;
+    btn.style.backgroundColor = '#f86'; btn.textContent = 'NO IMAGE!';
+    setTimeout(()=>{btn.style.backgroundColor = btnBkgr; btn.textContent = btnCnt;}, 600);
+    return;
+  }
 
-    const img_width = document.querySelector('dialog input[name="image_width"]:checked').value;
-    const img_align = document.querySelector('dialog input[name="image_align"]:checked').value;
-    const img_filter = document.querySelector('dialog input[name="image_filter"]:checked').value;
-/* -- by HTML -- */
-    let algn = 'display:inline-block;';
-    const avatar = document.getElementById('image_avatar').checked;
-    if(avatar) {
-      const avSize = parseInt(document.getElementById('avatar_size').value,10);
-      const avTip = document.querySelector('dialog input[name="avatar_tip"]:checked').value;
-      let avT = 'border-radius: 50%;';
-      if(avTip == 'octagon') avT = 'clip-path: polygon(29% 0,71% 0,100% 29%,100% 71%,71% 100%,29% 100%,0 71%,0 29%);'
-      else if(avTip == 'arrow') avT = 'clip-path: polygon(0% 0%, 75% 0%, 100% 50%, 75% 100%, 0% 100%);'
-      algn += `width:${avSize}px;height:${avSize}px;${avT}object-fit: cover;`;
-    }
-    else algn += (img_width == 'lines') ? `height:${document.getElementById('byLines').value}lh; width:auto;` : `width:${img_width};`;
-    const shdw = document.querySelector('#image_shadow').checked;
-    if(img_filter != 'normal' || shdw)
-      algn += `filter:${img_filter != 'normal' ? img_filter : ''}${shdw?' drop-shadow(0px 2px 3px #666)':''};`;
-    if(img_align == 'left') algn += 'margin-right:.8em; float:left;';
-    else if(img_align == 'right') algn += 'margin-left:.8em; float:right;';
-    else algn += 'margin:0;';
-    if(document.querySelector('#image_border').checked) algn += 'border:.5px solid #888;';
-    if(!avatar && document.querySelector('#image_radius').checked) algn += 'border-radius:.6em;';
+  let img_width = document.querySelector('#insertImageDlg input[name="image_width"]:checked').value;
+  let img_align = document.querySelector('#insertImageDlg input[name="image_align"]:checked').value;
+  const img_descript = document.getElementById('img_descript').value.trim();
+  const isBrd = document.querySelector('#image_border').checked;
 
-    closeDlg(e.target);
-    restoreSelection();
-    editor.chain().focus().setImage({
-        src: srcImg.src,
-        style: algn
-    }).run();
+  let st = 'display: flex;flex-direction: column;';
+  if(img_width == 'lines' && img_descript != '') img_width = '100%';
+  if(img_width == '100%') {
+    st += 'width: 100%; margin:0;';
+    img_align = 'none';
+  }
+  else {
+    if(img_width == 'lines') st += `height:${document.getElementById('byLines').value}lh; width:auto;`;
+    else st += `width: ${img_width};`;
+    if(img_align == 'left') st += 'margin-right:.8em; float:left;';
+    else if(img_align == 'right') st += 'margin-left:.8em; float:right;';
+  }
+  if(isBrd) st += 'border:.8px solid #888;';
+
+  closeDlg(e.target);
+  restoreSelection();
+
+if(document.getElementById('title_inside').checked) {
+  const t = `<table style="${st}"><tr><td style="display: grid;">
+  <img style="grid-area: 1 / 1; width:100%; background-color:#ffa;" src="${srcImg.src}"/>
+  <p style="grid-area: 1 / 1; background: rgb(255 255 255 / .4);-webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); border-top:.6px solid #ddd; align-self: end;text-align:center;padding:.6em 0;">${img_descript}</p>
+  </td></tr></table>`;
+  editor.chain().focus().insertContent(t, {
+        parseOptions: { preserveWhitespace: false },
+  }).run();
+  return;
+}
+
+  if(img_descript == '') {
+    editor.chain().focus().setImage({ src: srcImg.src, style: st }).run();
+  }
+  else {
+    const s = `style="font-size:.9em;line-height:1;text-align:${img_align == 'none'?'center':img_align};${isBrd?'padding: 4px;':''}"`;
+    editor.chain().focus().insertContent(getTblJsn(srcImg.src, img_descript, img_width, img_align, isBrd)).run();
+  }
 });
+
+function getTblJsn(imgSrc, caption, img_width, img_align, brd) {
+const tj = {
+  type: 'table',
+  attrs: { width: img_width, float: img_align, border: brd ? ".8px solid #888" : "none" },
+  content: [
+    {
+      type: 'tableRow',
+      content: [
+        {
+          type: 'tableCell',
+          attrs: { colspan: 1, rowspan: 1, colwidth: null },
+          content: [
+            {
+              type: 'image',
+              attrs: {
+                src: imgSrc,
+                style: "width: 100%",
+                alt: 'Sample image',
+                title: null,
+              },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: 'tableRow',
+      content: [
+        {
+          type: 'tableCell',
+          attrs: { colspan: 1, rowspan: 1, colwidth: null },
+          content: [
+            {
+              type: 'paragraph',
+              attrs: { textAlign: img_align, style: "font-size: .9em;line-height: 1;" + (brd ? 'margin: 0 4px 4px 4px;' : '') },
+              content: [{ type: 'text', text: caption }],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+// tj.content[0].content[0].content[0].attrs.src;
+// tj.content[1].content[0].content[0].content[0].text;
+return tj;
+}
+
 
 document.querySelector('#fileInput').addEventListener('change', (event) => {
   const file = event.target.files[0];
@@ -870,8 +993,9 @@ document.querySelector('#docNameInput').addEventListener('change', (event) => {
 
 document.querySelector('#footerLang').addEventListener('click', (event) => {
   const lng = [
-    ['RO', '"Pag."', '"din"'],
     ['EN', '"Page"', '"of"'],
+    ['NO', '""', '"/"'],
+    ['RO', '"Pag."', '"din"'],
     ['RU', '"Стр."', '"из"']
   ];
   const el = event.target;
@@ -887,8 +1011,10 @@ document.querySelector('#fileInput').addEventListener('change', (event) => {
   if(!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
-    base64File = e.target.result;
+    const base64File = e.target.result;
     document.getElementById('placeHolder').style.display = "none";
+    const desc = document.getElementById('img_descript');
+    desc.style.display = "block"; desc.focus();
     document.getElementById('previewImage').src = base64File;
   };
   reader.readAsDataURL(file);
@@ -940,7 +1066,7 @@ let isDirty = false;
 
 document.getElementById('saveDoc').addEventListener('click',  async () => {
   const name = document.getElementById('docNameInput').value.trim();
-  if(name == '') { notif(false, 'Set the title (under PDF)', 1500); return; }
+  if(name == '') { notif(false, 'SET TITLE!', 1500); return; }
   saveDoc(name, editor.getJSON(), false);
 
   async function saveDoc(key, jsn, ovrwr) {
@@ -955,10 +1081,10 @@ document.getElementById('saveDoc').addEventListener('click',  async () => {
     const val = { name: key, date: d, content: jsn };
     try {
       localStorage.setItem(k, JSON.stringify(val));
-      notif(true, "Saved!");
+      notif(true, "SAVED");
       isDirty = false;
     } catch(err) {
-      notif(false, "Error!");
+      notif(false, "ERROR");
     }
   }
 });
@@ -1006,7 +1132,7 @@ function notif(poz, txt, tmp = 400) {
   const d = document.createElement('div'), s = d.style;
   d.textContent = txt;
   s.position = "absolute";
-  s.backgroundColor = poz ? "rgb(0, 120, 0, .7)" : "rgb(180, 0, 0, .7)";
+  s.backgroundColor = poz ? "#080" : "#a00";
   s.padding = "1em 2em";
   s.borderRadius = '12px';
   s.color = "#fff";
