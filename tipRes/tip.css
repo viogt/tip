@@ -2,8 +2,8 @@
   --doc-name: "";
   --border-color: #ccc;
   --font-size: 15px;
-  --page-text: "Pag.";
-  --of-text: "din";
+  --page-text: "Page";
+  --of-text: "of";
   --font-fam: Roboto, Arial, sans-serif;
   --font-famH: "Roboto Condensed", Arial, sans-serif;
 }
@@ -132,6 +132,7 @@ table {
 table td {
   vertical-align: top;
   text-align: justify;
+  padding: 0;
 }
 
 H1 {
@@ -197,7 +198,7 @@ dialog {
   border: none;
   border-radius: 8px;
   padding: 1rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, .5);
 }
 
 dialog[open] {
@@ -265,6 +266,24 @@ input { accent-color: #080; }
     fill: none;
     width: 18px;
     height: 18px;
+}
+
+#img_descript {
+  width: 100%;
+  background-color: #fff;
+  font-size: .9em;
+  padding: 4px;
+  border: 1px solid #ccc;
+  outline: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: none;
+}
+
+span p {
+  font-size:.9em;line-height:1; color: red;
+  display: inline-block;
 }
 
 /* ------------------------- MEDIA --------------------- */
